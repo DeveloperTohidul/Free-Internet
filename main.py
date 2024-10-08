@@ -1,163 +1,53 @@
-import os
-from telegraph import upload_file
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
+# আপনার টেলিগ্রাম বটের টোকেন
+TOKEN = "8034878152:AAH-pXJEhuDM0JGWf-WfUSR9B4rTpX8Bb8k"
 
-Bot = Client(
-    "Telegraph Uploader Bot",
-    bot_token=os.environ.get("BOT_TOKEN"),
-    api_id=int(os.environ.get("API_ID")),
-    api_hash=os.environ.get("API_HASH")
-)
-
-DOWNLOAD_LOCATION = os.environ.get("DOWNLOAD_LOCATION", "./DOWNLOADS/")
-
-START_TEXT = """Hello {},
-I am an under 5MB media or file to telegra.ph link uploader bot.
-
-Made by @FayasNoushad"""
-
-HELP_TEXT = """--**Help**--
-
-- Just give me a media under 5MB
-- Then I will download it
-- I will then upload it to the telegra.ph link
-"""
-
-ABOUT_TEXT = """--**About Me**--
-
-- **Bot :** `Telegraph Uploader`
-- **Developer :**
-  • [GitHub](https://github.com/FayasNoushad)
-  • [Telegram](https://telegram.me/FayasNoushad)
-- **Source :** [Click here](https://github.com/FayasNoushad/Telegraph-Uploader-Bot)
-- **Language :** [Python3](https://python.org)
-- **Library :** [Pyrogram](https://pyrogram.org)"""
-
-START_BUTTONS = InlineKeyboardMarkup(
-    [
-        [
-            InlineKeyboardButton('Feedback', url='https://telegram.me/FayasNoushad')
-        ],
-        [
-            InlineKeyboardButton('Help', callback_data='help'),
-            InlineKeyboardButton('About', callback_data='about'),
-            InlineKeyboardButton('Close', callback_data='close')
-        ]
+# /start কমান্ড: Reply Keyboard মেনু প্রদর্শন
+async def start(update: Update, context):
+    # মেনুতে বাটনগুলো (বাম দিকে)
+    keyboard = [
+        ["Help"],               # প্রথম লাইন
+        ["About"],              # দ্বিতীয় লাইন
+        ["Exit"],               # তৃতীয় লাইন
+        ["New Feature"],        # চতুর্থ লাইন
+        ["Hamster Image"]       # "Hamster Image" বাটন
     ]
-)
 
-HELP_BUTTONS = InlineKeyboardMarkup(
-    [
-        [
-            InlineKeyboardButton('Home', callback_data='home'),
-            InlineKeyboardButton('About', callback_data='about'),
-            InlineKeyboardButton('Close', callback_data='close')
-        ]
-    ]
-)
+    # Reply Keyboard তৈরি করা
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-ABOUT_BUTTONS = InlineKeyboardMarkup(
-    [
-        [
-            InlineKeyboardButton('Home', callback_data='home'),
-            InlineKeyboardButton('Help', callback_data='help'),
-            InlineKeyboardButton('Close', callback_data='close')
-        ]
-    ]
-)
+    await update.message.reply_text('Choose an option:', reply_markup=reply_markup)
 
+# মেসেজের রেসপন্স ফাংশন
+async def handle_message(update: Update, context):
+    user_message = update.message.text
 
-@Bot.on_callback_query()
-async def cb_data(bot, update):
-    
-    if update.data == "home":
-        await update.message.edit_text(
-            text=START_TEXT.format(update.from_user.mention),
-            disable_web_page_preview=True,
-            reply_markup=START_BUTTONS
-        )
-    
-    elif update.data == "help":
-        await update.message.edit_text(
-            text=HELP_TEXT,
-            disable_web_page_preview=True,
-            reply_markup=HELP_BUTTONS
-        )
-    
-    elif update.data == "about":
-        await update.message.edit_text(
-            text=ABOUT_TEXT,
-            disable_web_page_preview=True,
-            reply_markup=ABOUT_BUTTONS
-        )
-    
+    # "Hamster Image" ক্লিক করলে ইউটিউব লিঙ্ক খুলবে
+    if user_message == "Hamster Image":
+        await update.message.reply_text("Opening Hamster Video: [YouTube](https://www.youtube.com)", parse_mode='Markdown')
+    elif user_message == "Help":
+        await update.message.reply_text("This bot allows you to view cute hamster images and interact with the bot!")
+    elif user_message == "About":
+        await update.message.reply_text("This bot was created to share cute hamster images and bring joy! 😊")
+    elif user_message == "Exit":
+        await update.message.reply_text("Goodbye! Have a great day! 👋")
+    elif user_message == "New Feature":
+        await update.message.reply_text("This is a new feature!")
     else:
-        await update.message.delete()
-    
+        await update.message.reply_text("Please choose a valid option from the menu.")
 
-@Bot.on_message(filters.private & filters.command(["start"]))
-async def start(bot, update):
-    
-    await update.reply_text(
-        text=START_TEXT.format(update.from_user.mention),
-        disable_web_page_preview=True,
-        quote=True,
-        reply_markup=START_BUTTONS
-    )
+# মূল স্ক্রিপ্ট
+if __name__ == '__main__':
+    application = Application.builder().token(TOKEN).build()
 
+    # কমান্ড হ্যান্ডলার
+    application.add_handler(CommandHandler("start", start))
 
-@Bot.on_message(filters.private & filters.media)
-async def getmedia(bot, update):
-    
-    medianame = DOWNLOAD_LOCATION + str(update.from_user.id)
-    
-    try:
-        message = await update.reply_text(
-            text="`Processing...`",
-            quote=True,
-            disable_web_page_preview=True
-        )
-        await bot.download_media(
-            message=update,
-            file_name=medianame
-        )
-        response = upload_file(medianame)
-        try:
-            os.remove(medianame)
-        except:
-            pass
-    except Exception as error:
-        text=f"Error :- <code>{error}</code>"
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton('More Help', callback_data='help')]]
-        )
-        await message.edit_text(
-            text=text,
-            disable_web_page_preview=True,
-            reply_markup=reply_markup
-        )
-        return
-    
-    text=f"**Link :-** `https://telegra.ph{response[0]}`\n\n**Join :-** @FayasNoushad"
-    reply_markup=InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(text="Open Link", url=f"https://telegra.ph{response[0]}"),
-                InlineKeyboardButton(text="Share Link", url=f"https://telegram.me/share/url?url=https://telegra.ph{response[0]}")
-            ],
-            [
-                InlineKeyboardButton(text="Feedback", url="https://telegram.me/FayasNoushad")
-            ]
-        ]
-    )
-    
-    await message.edit_text(
-        text=text,
-        disable_web_page_preview=True,
-        reply_markup=reply_markup
-    )
+    # মেসেজ হ্যান্ডলার
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-
-Bot.run()
+    # বটটি চালু করা
+    print("Bot is running...")
+    application.run_polling()
